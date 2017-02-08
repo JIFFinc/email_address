@@ -44,13 +44,20 @@ module EmailAddress
 
     # Returns: [["mta7.am0.yahoodns.net", "66.94.237.139", 1], ["mta5.am0.yahoodns.net", "67.195.168.230", 1], ["mta6.am0.yahoodns.net", "98.139.54.60", 1]]
     # If not found, returns []
+    # Returns: [["mta7.am0.yahoodns.net", "66.94.237.139", 1], ["mta5.am0.yahoodns.net", "67.195.168.230", 1], ["mta6.am0.yahoodns.net", "98.139.54.60", 1]]
+    # If not found, returns []
     def mxers
       @mxers ||= Resolv::DNS.open do |dns|
         ress = dns.getresources(@host, Resolv::DNS::Resource::IN::MX)
-        ress.map { |r| [r.exchange.to_s, IPSocket::getaddress(r.exchange.to_s), r.preference] }
+        records = ress.map do |r|
+          begin
+            [r.exchange.to_s, IPSocket::getaddress(r.exchange.to_s), r.preference]
+          rescue SocketError # not found, but could also mean network not work or it could mean one record doesn't resolve an address
+            nil
+          end
+        end
+        records.compact
       end
-    rescue SocketError # not found, but could also mean network not work
-      @_dns_a_record ||= []
     end
 
     # Returns Array of domain names for the MX'ers, used to determine the Provider
